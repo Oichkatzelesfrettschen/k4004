@@ -8,7 +8,7 @@ class K4004
 {
 public:
     static constexpr uint8_t REGISTERS_SIZE = 8u;
-    static constexpr uint8_t STACK_SIZE = 4u;
+    static constexpr uint8_t STACK_SIZE = 3u;  // Intel 4004 has 3-level stack
 
     K4004(ROM& rom, RAM& ram);
 
@@ -24,7 +24,7 @@ public:
     uint8_t getTest() const { return m_test; }
     void setTest(uint8_t test) { m_test = test & 1u; }
 private:
-    void incPC() { m_stack[m_SP] = ++m_stack[m_SP] & 0x03FFu; }
+    void incPC() { m_stack[m_SP] = ++m_stack[m_SP] & 0x0FFFu; }  // 12-bit PC (4KB ROM)
 
     uint8_t m_registers[REGISTERS_SIZE];
     uint16_t m_stack[STACK_SIZE];

@@ -26,7 +26,7 @@ void JCN(uint16_t* stack, uint8_t SP, uint8_t IR, uint8_t ACC, uint8_t test, con
 {
     uint8_t con = IR & 0x0Fu;
     uint8_t address = rom.readByte(stack[SP]);
-    stack[SP] = ++stack[SP] & 0x03FFu;
+    stack[SP] = ++stack[SP] & 0x0FFFu;  // 12-bit PC
 
     bool shouldJump = false;
     switch (con) {
@@ -40,7 +40,7 @@ void JCN(uint16_t* stack, uint8_t SP, uint8_t IR, uint8_t ACC, uint8_t test, con
 
     if (shouldJump) {
         if ((stack[SP] & 0x00FFu) == 0xFE) stack[SP] += 2;
-        stack[SP] &= 0x0300u;
+        stack[SP] &= 0x0F00u;  // Keep upper 4 bits (page)
         stack[SP] |= address;
     }
 }
@@ -49,7 +49,7 @@ void FIM(uint16_t* stack, uint8_t SP, uint8_t* registers, uint8_t IR, const ROM&
 {
     uint8_t reg = (IR & 0x0Fu) >> 1;
     registers[reg] = rom.readByte(stack[SP]);
-    stack[SP] = ++stack[SP] & 0x03FFu;
+    stack[SP] = ++stack[SP] & 0x0FFFu;  // 12-bit PC
 }
 
 void SRC(RAM& ram, ROM& rom, const uint8_t* registers, uint8_t IR)
@@ -73,7 +73,7 @@ void JIN(uint16_t* stack, uint8_t SP, const uint8_t* registers, uint8_t IR)
     uint8_t reg = (IR & 0x0Fu) >> 1;
     uint8_t addr = registers[reg];
     if ((stack[SP] & 0x00FFu) == 0xFFu) ++stack[SP];
-    stack[SP] &= 0x0300u;
+    stack[SP] &= 0x0F00u;  // Keep upper 4 bits (page)
     stack[SP] |= addr;
 }
 
@@ -83,15 +83,21 @@ void JUN(uint16_t* stack, uint8_t SP, uint8_t IR, const ROM& rom)
     stack[SP] = address | rom.readByte(stack[SP]);
 }
 
-void JMS(uint16_t* stack, uint8_t& SP, uint8_t IR, const ROM& rom)
+void JMS(uint16_t* stack, uint8_t& SP, uint8_t IR, const ROM& rom, uint8_t stackSize)
 {
     uint16_t address = (IR & 0x0Fu) << 8;
     address |= rom.readByte(stack[SP]);
-    stack[SP] = ++stack[SP] & 0x03FFu;
+    stack[SP] = ++stack[SP] & 0x0FFFu;  // 12-bit PC
+
+    // Stack bounds check - prevent overflow
+    if (SP >= stackSize - 1) {
+        // Stack overflow - halt or handle error
+        // For now, don't increment SP (stay at current level)
+        return;
+    }
 
     ++SP;
-    // TODO: !! Add bounds check !!
-    stack[SP] = address & 0x03FFu;
+    stack[SP] = address & 0x0FFFu;  // 12-bit address
 }
 
 void INC(uint8_t* registers, uint8_t IR)
@@ -107,11 +113,11 @@ void ISZ(uint16_t* stack, uint8_t SP, uint8_t* registers, uint8_t IR, const ROM&
     uint8_t value = getRegisterValue(registers, reg);
     setRegisterValue(registers, reg, value + 1);
     uint8_t addr = rom.readByte(stack[SP]);
-    stack[SP] = ++stack[SP] & 0x03FFu;
+    stack[SP] = ++stack[SP] & 0x0FFFu;  // 12-bit PC
 
     if (((value + 1) & 0x0Fu) != 0u) {
         if ((stack[SP] & 0x00FFu) == 0xFEu) stack[SP] += 2u;
-        stack[SP] &= 0x0300u;
+        stack[SP] &= 0x0F00u;  // Keep upper 4 bits (page)
         stack[SP] |= addr;
     }
 }
@@ -148,15 +154,15 @@ void XCH(uint8_t& ACC, uint8_t* registers, uint8_t IR)
 
 void BBL(uint16_t* stack, uint8_t& SP, uint8_t& ACC, const uint8_t* registers, uint8_t IR)
 {
+    // Stack bounds check - prevent underflow
     if (SP > 0) {
-        // TODO: !! Add bounds check !!
         stack[SP] = 0u;
         --SP;
     }
+    // If SP == 0, we're already at the bottom - stay there
 
-    // TODO: fix this, should load lsb 4bits to acc directly
-    uint8_t reg = IR & 0x0Fu;
-    ACC = getRegisterValue(registers, reg) | (ACC & 0x10u);
+    // Load immediate data (lower 4 bits of IR) directly to accumulator
+    ACC = (IR & 0x0Fu) | (ACC & 0x10u);  // Preserve carry flag
 }
 
 void LDM(uint8_t& ACC, uint8_t IR)
@@ -346,4 +352,117 @@ void DCL(RAM& ram, uint8_t ACC)
         ram.setRAMBank(3u);
         break;
     }
+}
+
+// ============================================================================
+// Intel 4040 New Instructions (14 additional instructions)
+// ============================================================================
+
+// HLT - Halt processor until interrupt or STP pin
+void HLT(bool& halted)
+{
+    halted = true;
+}
+
+// BBS - Branch Back from interrupt, restore SRC
+void BBS(uint16_t* stack, uint8_t& SP, RAM& ram, ROM& rom, uint8_t srcBackup, bool& interruptEnabled)
+{
+    // Restore SRC register from backup
+    ram.writeSrcAddress(srcBackup);
+    rom.writeSrcAddress(srcBackup);
+
+    // Re-enable interrupts
+    interruptEnabled = true;
+
+    // Return from interrupt (pop stack)
+    if (SP > 0) {
+        stack[SP] = 0u;
+        --SP;
+    }
+}
+
+// LCR - Load Command Register to accumulator
+void LCR(uint8_t& ACC, uint8_t commandRegister)
+{
+    ACC = (commandRegister & 0x0Fu) | (ACC & 0x10u);
+}
+
+// OR4 - OR index register 4 with accumulator
+void OR4(uint8_t& ACC, const uint8_t* registers)
+{
+    uint8_t reg4Value = getRegisterValue(registers, 4);
+    ACC = ((ACC & 0x0Fu) | reg4Value) | (ACC & 0x10u);
+}
+
+// OR5 - OR index register 5 with accumulator
+void OR5(uint8_t& ACC, const uint8_t* registers)
+{
+    uint8_t reg5Value = getRegisterValue(registers, 5);
+    ACC = ((ACC & 0x0Fu) | reg5Value) | (ACC & 0x10u);
+}
+
+// AN6 - AND index register 6 with accumulator
+void AN6(uint8_t& ACC, const uint8_t* registers)
+{
+    uint8_t reg6Value = getRegisterValue(registers, 6);
+    ACC = ((ACC & 0x0Fu) & reg6Value) | (ACC & 0x10u);
+}
+
+// AN7 - AND index register 7 with accumulator
+void AN7(uint8_t& ACC, const uint8_t* registers)
+{
+    uint8_t reg7Value = getRegisterValue(registers, 7);
+    ACC = ((ACC & 0x0Fu) & reg7Value) | (ACC & 0x10u);
+}
+
+// DB0 - Designate ROM Bank 0
+void DB0(uint8_t& romBank)
+{
+    romBank = 0;
+}
+
+// DB1 - Designate ROM Bank 1
+void DB1(uint8_t& romBank)
+{
+    romBank = 1;
+}
+
+// SB0 - Select index register Bank 0
+void SB0(uint8_t& registerBank)
+{
+    registerBank = 0;
+}
+
+// SB1 - Select index register Bank 1
+void SB1(uint8_t& registerBank)
+{
+    registerBank = 1;
+}
+
+// EIN - Enable Interrupt system
+void EIN(bool& interruptEnabled)
+{
+    interruptEnabled = true;
+}
+
+// DIN - Disable Interrupt system
+void DIN(bool& interruptEnabled)
+{
+    interruptEnabled = false;
+}
+
+// RPM - Read Program Memory to accumulator
+void RPM(uint8_t& ACC, const ROM& rom, uint16_t PC)
+{
+    // Read the byte at current PC from program memory
+    uint8_t value = rom.readByte(PC);
+    ACC = (value & 0x0Fu) | (ACC & 0x10u);
+}
+
+// WPM - Write Program Memory (stub - ROM is read-only in most systems)
+void WPM()
+{
+    // This instruction is typically not implemented in emulators
+    // as program memory (ROM) is read-only
+    // In real hardware with EPROM, this would program the ROM
 }
