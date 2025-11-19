@@ -2,8 +2,7 @@
 
 K4003::K4003() :
     m_shiftRegister(0u),
-    m_outputEnabled(true),
-    m_bitPosition(0u)
+    m_outputEnabled(true)
 {
 }
 
@@ -11,23 +10,20 @@ void K4003::reset()
 {
     m_shiftRegister = 0u;
     m_outputEnabled = true;
-    m_bitPosition = 0u;
 }
 
 uint8_t K4003::shiftIn(uint8_t dataBit)
 {
-    // Set the bit at the current position
+    // Capture bit 9 (MSB) before shifting - this gets shifted out for cascading
+    uint8_t shiftedOut = (m_shiftRegister >> 9) & 1u;
+
+    // Shift left by 1 position (all bits move up)
+    m_shiftRegister = (m_shiftRegister << 1) & 0x3FFu;  // Mask to 10 bits (0x3FF = 0b1111111111)
+
+    // Insert new bit at position 0 (LSB)
     if (dataBit & 1u) {
-        m_shiftRegister |= (1u << m_bitPosition);
-    } else {
-        m_shiftRegister &= ~(1u << m_bitPosition);
+        m_shiftRegister |= 1u;
     }
-
-    // Capture bit that will be shifted out (bit that was at position 9)
-    uint8_t shiftedOut = (m_shiftRegister >> NUM_OUTPUTS) & 1u;
-
-    // Increment position and wrap around
-    m_bitPosition = (m_bitPosition + 1) % NUM_OUTPUTS;
 
     return shiftedOut;
 }

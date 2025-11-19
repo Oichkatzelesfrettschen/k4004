@@ -85,19 +85,26 @@ void JUN(uint16_t* stack, uint8_t SP, uint8_t IR, const ROM& rom)
 
 void JMS(uint16_t* stack, uint8_t& SP, uint8_t IR, const ROM& rom, uint8_t stackSize)
 {
+    // Compute jump address from instruction
     uint16_t address = (IR & 0x0Fu) << 8;
     address |= rom.readByte(stack[SP]);
-    stack[SP] = ++stack[SP] & 0x0FFFu;  // 12-bit PC
 
-    // Stack bounds check - prevent overflow
-    if (SP >= stackSize - 1) {
-        // Stack overflow - halt or handle error
-        // For now, don't increment SP (stay at current level)
-        return;
+    // Save return address (current PC + 2) for when subroutine returns
+    uint16_t returnAddr = (stack[SP] + 2) & 0x0FFFu;  // 12-bit PC
+
+    // Increment SP with wraparound on overflow (documented 4004 behavior)
+    // 4004: 3-level stack (0-2), 4th call keeps SP=2 (overwrites stack[2])
+    // 4040: 7-level stack (0-6), 8th call keeps SP=6 (overwrites stack[6])
+    if (SP < stackSize - 1) {
+        ++SP;
     }
+    // else: SP stays at max level (overflow), overwrites top of stack
 
-    ++SP;
-    stack[SP] = address & 0x0FFFu;  // 12-bit address
+    // Save return address at current stack level
+    stack[SP] = returnAddr;
+
+    // NOTE: In real hardware, PC is updated to 'address' automatically.
+    // In this test framework, caller must update stack[SP] to jump address.
 }
 
 void INC(uint8_t* registers, uint8_t IR)

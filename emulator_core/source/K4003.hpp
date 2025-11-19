@@ -52,5 +52,4 @@ public:
 private:
     uint16_t m_shiftRegister;   // 10-bit shift register (bits 0-9 used)
     bool m_outputEnabled;       // Output enable state
-    uint8_t m_bitPosition;      // Current bit position for loading (0-9)
 };
