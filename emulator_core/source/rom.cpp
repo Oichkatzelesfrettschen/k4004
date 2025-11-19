@@ -54,26 +54,57 @@ void ROM::reset()
 
 void ROM::writeIOPort(uint8_t value)
 {
+    // Intel 4001 I/O Port Write Logic:
+    // - Each I/O bit can be configured as input or output via metal mask
+    // - Mask bit = 0: Output (CPU can write)
+    // - Mask bit = 1: Input (value preserved, CPU cannot write)
+
     uint8_t oldValue = m_ioPorts[m_srcAddress];
     uint8_t mask = m_ioPortsMasks[m_srcAddress];
     uint8_t newValue = 0u;
-    newValue |= ((mask & 1 << 0) ? oldValue : value) & 1 << 0;
-    newValue |= ((mask & 1 << 2) ? oldValue : value) & 1 << 1;
-    newValue |= ((mask & 1 << 4) ? oldValue : value) & 1 << 2;
-    newValue |= ((mask & 1 << 6) ? oldValue : value) & 1 << 3;
-    
-    m_ioPorts[m_srcAddress] = newValue;
+
+    // For each of the 4 I/O bits:
+    // If mask bit is 0 (output), use new value from CPU
+    // If mask bit is 1 (input), preserve old value
+    for (uint8_t i = 0; i < 4; ++i) {
+        bool isInput = (mask >> i) & 1;
+        uint8_t bitValue = isInput ? ((oldValue >> i) & 1) : ((value >> i) & 1);
+        newValue |= (bitValue << i);
+    }
+
+    m_ioPorts[m_srcAddress] = newValue & 0x0Fu;
 }
 
 uint8_t ROM::readIOPort() const
 {
-    uint8_t portValue = m_ioPorts[m_srcAddress];
-    uint8_t mask = m_ioPortsMasks[m_srcAddress];
-    uint8_t returnValue = 0u;
-    returnValue |= ((mask & 1 << 0) ? portValue : (mask >> 1 & 1)) & 1 << 0;
-    returnValue |= ((mask & 1 << 2) ? portValue : (mask >> 2 & 1)) & 1 << 1;
-    returnValue |= ((mask & 1 << 4) ? portValue : (mask >> 3 & 1)) & 1 << 2;
-    returnValue |= ((mask & 1 << 6) ? portValue : (mask >> 4 & 1)) & 1 << 3;
-    
-    return returnValue;
+    // Intel 4001 I/O Port Read Logic:
+    // - Mask bit = 0: Output (read back what CPU wrote)
+    // - Mask bit = 1: Input (read from external device)
+    // Simply return the current port value (external devices update via setExternalIOPort)
+
+    return m_ioPorts[m_srcAddress] & 0x0Fu;
+}
+
+void ROM::setExternalIOPort(uint8_t chipIndex, uint8_t value)
+{
+    // Allow external devices (keyboard, switches, etc.) to set I/O port values
+    // Only affects pins configured as inputs (mask bit = 1)
+
+    if (chipIndex >= NUM_ROM_CHIPS)
+        return;
+
+    uint8_t mask = m_ioPortsMasks[chipIndex];
+    uint8_t oldValue = m_ioPorts[chipIndex];
+    uint8_t newValue = 0u;
+
+    // For each of the 4 I/O bits:
+    // If mask bit is 1 (input), use new external value
+    // If mask bit is 0 (output), preserve CPU-written value
+    for (uint8_t i = 0; i < 4; ++i) {
+        bool isInput = (mask >> i) & 1;
+        uint8_t bitValue = isInput ? ((value >> i) & 1) : ((oldValue >> i) & 1);
+        newValue |= (bitValue << i);
+    }
+
+    m_ioPorts[chipIndex] = newValue & 0x0Fu;
 }

@@ -1,6 +1,10 @@
 set(K4004_EMULATOR_TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt
     ${CMAKE_CURRENT_SOURCE_DIR}/instructions_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/k4003_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/k4101_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/k4201a_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/rom_io_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 )
 

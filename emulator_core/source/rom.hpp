@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <cstddef>
 
 // Emulates bank of 16 4001 chips
 class ROM
@@ -18,9 +19,13 @@ public:
     void writeIOPort(uint8_t value);
     uint8_t readIOPort() const;
     void writeSrcAddress(uint8_t address) { m_srcAddress = address >> 4; }
-    
+
+    // Allow external devices to set I/O port input pins
+    void setExternalIOPort(uint8_t chipIndex, uint8_t value);
+
     const uint8_t* getRomContents() const { return m_rom; }
     uint8_t getIOPort(uint8_t idx) const { return m_ioPorts[idx]; }
+    uint8_t getIOPortMask(uint8_t idx) const { return m_ioPortsMasks[idx]; }
     uint8_t getSrcAddress() const { return m_srcAddress; }
 
     ROM(const ROM&) = delete;
