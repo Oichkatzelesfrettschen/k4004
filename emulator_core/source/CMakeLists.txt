@@ -27,6 +27,10 @@ set(K4004_EMULATOR_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/K4308.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/K4702.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/K4702.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SevenSegmentDisplay.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/SevenSegmentDisplay.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/MatrixKeyboard.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/MatrixKeyboard.hpp
     ${SHARED_DIR}/source/assembly.cpp
     ${SHARED_DIR}/source/assembly.hpp
 )
