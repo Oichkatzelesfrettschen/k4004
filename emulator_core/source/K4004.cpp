@@ -70,7 +70,8 @@ uint8_t K4004::clock()
     case +AsmIns::FIN: cycles = 2u; FIN(m_registers, getPC(), m_IR, m_rom); break;
     case +AsmIns::JIN: cycles = 1u; JIN(m_stack, m_SP, m_registers, m_IR); break;
     case +AsmIns::JUN: cycles = 2u; JUN(m_stack, m_SP, m_IR, m_rom); break;
-    case +AsmIns::JMS: cycles = 2u; JMS(m_stack, m_SP, m_IR, m_rom); break;
+    case +AsmIns::JMS: cycles = 2u; JMS(m_stack, m_SP, m_IR, m_rom, STACK_SIZE); break;
+    case +AsmIns::WPM: cycles = 1u; WPM(); break;
     case +AsmIns::INC: cycles = 1u; INC(m_registers, m_IR); break;
     case +AsmIns::ISZ: cycles = 2u; ISZ(m_stack, m_SP, m_registers, m_IR, m_rom); break;
     case +AsmIns::ADD: cycles = 1u; ADD(m_ACC, m_registers, m_IR); break;
