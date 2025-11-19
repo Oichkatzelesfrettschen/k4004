@@ -2,6 +2,7 @@ set(K4004_EMULATOR_TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt
     ${CMAKE_CURRENT_SOURCE_DIR}/instructions_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/instruction_audit_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cycle_timing_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/k4003_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/k4101_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/k4201a_tests.cpp
