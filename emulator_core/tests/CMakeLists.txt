@@ -12,6 +12,7 @@ set(K4004_EMULATOR_TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/nibble_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/seven_segment_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/matrix_keyboard_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/intel8255_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 )
 
