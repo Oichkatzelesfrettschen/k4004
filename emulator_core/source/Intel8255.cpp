@@ -33,7 +33,7 @@ void Intel8255::reset()
     m_portCL_isInput = true;
     m_groupA_mode = Mode::MODE_0;
     m_groupB_mode = Mode::MODE_0;
-    m_chipSelect = false;
+    // Note: m_chipSelect is NOT reset - it's a pin signal controlled externally
 }
 
 void Intel8255::write(uint8_t address, uint8_t data)
