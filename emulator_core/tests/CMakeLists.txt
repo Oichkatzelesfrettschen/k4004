@@ -9,6 +9,7 @@ set(K4004_EMULATOR_TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/k4308_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/k4702_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/rom_io_tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/nibble_tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 )
 
