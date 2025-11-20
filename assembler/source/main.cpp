@@ -1,5 +1,6 @@
 #include "assembler/source/assembler.hpp"
 
+#include <cstring>
 #include <iostream>
 #include <fstream>
 

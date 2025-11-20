@@ -23,6 +23,10 @@ public:
     uint8_t getCY() const { return m_ACC >> 4; }
     uint8_t getTest() const { return m_test; }
     void setTest(uint8_t test) { m_test = test & 1u; }
+
+    // Cycle-accurate timing support
+    uint64_t getCycleCount() const { return m_cycleCount; }
+    void resetCycleCount() { m_cycleCount = 0; }
 private:
     void incPC() { m_stack[m_SP] = ++m_stack[m_SP] & 0x0FFFu; }  // 12-bit PC (4KB ROM)
 
@@ -36,4 +40,5 @@ private:
     RAM& m_ram;
 
     uint8_t m_CM_RAM;
+    uint64_t m_cycleCount;  // Total instruction cycles executed
 };

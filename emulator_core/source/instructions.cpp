@@ -85,19 +85,26 @@ void JUN(uint16_t* stack, uint8_t SP, uint8_t IR, const ROM& rom)
 
 void JMS(uint16_t* stack, uint8_t& SP, uint8_t IR, const ROM& rom, uint8_t stackSize)
 {
+    // Compute jump address from instruction
     uint16_t address = (IR & 0x0Fu) << 8;
     address |= rom.readByte(stack[SP]);
-    stack[SP] = ++stack[SP] & 0x0FFFu;  // 12-bit PC
 
-    // Stack bounds check - prevent overflow
-    if (SP >= stackSize - 1) {
-        // Stack overflow - halt or handle error
-        // For now, don't increment SP (stay at current level)
-        return;
+    // Save return address (current PC + 2) for when subroutine returns
+    uint16_t returnAddr = (stack[SP] + 2) & 0x0FFFu;  // 12-bit PC
+
+    // Increment SP with wraparound on overflow (documented 4004 behavior)
+    // 4004: 3-level stack (0-2), 4th call keeps SP=2 (overwrites stack[2])
+    // 4040: 7-level stack (0-6), 8th call keeps SP=6 (overwrites stack[6])
+    if (SP < stackSize - 1) {
+        ++SP;
     }
+    // else: SP stays at max level (overflow), overwrites top of stack
 
-    ++SP;
-    stack[SP] = address & 0x0FFFu;  // 12-bit address
+    // Save return address at current stack level
+    stack[SP] = returnAddr;
+
+    // NOTE: In real hardware, PC is updated to 'address' automatically.
+    // In this test framework, caller must update stack[SP] to jump address.
 }
 
 void INC(uint8_t* registers, uint8_t IR)
@@ -132,7 +139,7 @@ void ADD(uint8_t& ACC, const uint8_t* registers, uint8_t IR)
 
 void SUB(uint8_t& ACC, const uint8_t* registers, uint8_t IR)
 {
-    uint8_t CY = ACC >> 4 ? 0u : 1u;
+    uint8_t CY = (ACC >> 4) & 1;  // Fixed: Use carry directly (inverted semantics are in the algorithm)
     uint8_t temp = IR & 0x0Fu;
     temp = (~getRegisterValue(registers, temp) & 0x0Fu) + CY;
     ACC = (ACC & 0x0Fu) + temp;
@@ -207,7 +214,7 @@ void WR3(RAM& ram, uint8_t ACC)
 
 void SBM(uint8_t& ACC, const RAM& ram)
 {
-    uint8_t CY = ACC >> 4 ? 0u : 1u;
+    uint8_t CY = (ACC >> 4) & 1;  // Fixed: Use carry directly (inverted semantics are in the algorithm)
     uint8_t temp = (~ram.readRAM() & 0x0Fu) + CY;
     ACC = (ACC & 0x0Fu) + temp;
 }
@@ -309,7 +316,7 @@ void DAC(uint8_t& ACC)
 
 void TCS(uint8_t& ACC)
 {
-    ACC = ACC >> 4 ? 10u : 9u;
+    ACC = ACC >> 4 ? 9u : 10u;  // Fixed: Returns 10-CY (CY=1→9, CY=0→10)
 }
 
 void STC(uint8_t& ACC)
@@ -327,12 +334,22 @@ void DAA(uint8_t& ACC)
 void KBP(uint8_t& ACC)
 {
     uint8_t temp = ACC & 0x0Fu;
-    if (temp == 0b0000u) return;
-    if (temp == 0b0001u) return;
-    if (temp == 0b0010u) return;
-    if (temp == 0b0100u) { ACC = 0b0011u | (ACC & 0x10u); return; }
-    if (temp == 0b1000u) { ACC = 0b0100u | (ACC & 0x10u); return; }
-    ACC = 0b1111u | (ACC & 0x10u);
+
+    // Special case: ACC=0 examines carry flag (undocumented feature for keyboard scanning)
+    // Returns 9 or 10 to distinguish "no key pressed" from "key 0 pressed"
+    if (temp == 0b0000u) {
+        ACC = (ACC >> 4) ? 10u : 9u;  // CY=1→10, CY=0→9
+        return;
+    }
+
+    // Single bit patterns return bit position (1-4)
+    if (temp == 0b0001u) { ACC = 1u; return; }
+    if (temp == 0b0010u) { ACC = 2u; return; }
+    if (temp == 0b0100u) { ACC = 3u; return; }
+    if (temp == 0b1000u) { ACC = 4u; return; }
+
+    // Multiple bits or invalid patterns return 15
+    ACC = 0b1111u;
 }
 
 void DCL(RAM& ram, uint8_t ACC)

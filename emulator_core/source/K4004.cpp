@@ -22,6 +22,7 @@ void K4004::reset()
     m_ACC = 0u;
     m_test = 0u;
     m_CM_RAM = 0u;
+    m_cycleCount = 0;
     m_ram.reset();
 }
 
@@ -81,6 +82,10 @@ uint8_t K4004::clock()
     case +AsmIns::BBL: cycles = 1u; BBL(m_stack, m_SP, m_ACC, m_registers, m_IR); break;
     case +AsmIns::LDM: cycles = 1u; LDM(m_ACC, m_IR); break;
     }
+
+    // Accumulate instruction cycles for cycle-accurate timing
+    // Each instruction cycle represents 8 clock cycles at 740kHz
+    m_cycleCount += cycles;
 
     return cycles;
 }

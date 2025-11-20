@@ -1,5 +1,6 @@
 #include "assembler/source/conversions.hpp"
 
+#include <cstdint>
 #include <cassert>
 
 unsigned int textToHex(const std::string_view& str)

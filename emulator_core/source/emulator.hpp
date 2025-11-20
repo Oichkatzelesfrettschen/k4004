@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include "emulator_core/source/K4004.hpp"
 #include "emulator_core/source/ram.hpp"
 #include "emulator_core/source/rom.hpp"
