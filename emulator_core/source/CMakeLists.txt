@@ -35,6 +35,8 @@ set(K4004_EMULATOR_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/Intel8255.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii_hex_parser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii_hex_parser.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/busicom_peripherals.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/busicom_peripherals.hpp
     ${SHARED_DIR}/source/assembly.cpp
     ${SHARED_DIR}/source/assembly.hpp
 )
