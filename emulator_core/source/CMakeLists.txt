@@ -33,6 +33,8 @@ set(K4004_EMULATOR_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/MatrixKeyboard.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Intel8255.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Intel8255.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii_hex_parser.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii_hex_parser.hpp
     ${SHARED_DIR}/source/assembly.cpp
     ${SHARED_DIR}/source/assembly.hpp
 )
