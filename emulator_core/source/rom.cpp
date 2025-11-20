@@ -108,3 +108,16 @@ void ROM::setExternalIOPort(uint8_t chipIndex, uint8_t value)
 
     m_ioPorts[chipIndex] = newValue & 0x0Fu;
 }
+
+void ROM::setIOPortMask(uint8_t chipIndex, uint8_t mask)
+{
+    // Configure I/O port mask programmatically
+    // Used for systems like Busicom where ROM file doesn't contain mask data
+    // Mask bit = 0: Output (CPU can write)
+    // Mask bit = 1: Input (external device drives the pin)
+
+    if (chipIndex >= NUM_ROM_CHIPS)
+        return;
+
+    m_ioPortsMasks[chipIndex] = mask & 0x0Fu;
+}

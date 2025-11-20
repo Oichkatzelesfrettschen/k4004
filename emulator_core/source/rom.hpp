@@ -23,6 +23,9 @@ public:
     // Allow external devices to set I/O port input pins
     void setExternalIOPort(uint8_t chipIndex, uint8_t value);
 
+    // Configure I/O port masks programmatically (for systems without mask data in ROM file)
+    void setIOPortMask(uint8_t chipIndex, uint8_t mask);
+
     const uint8_t* getRomContents() const { return m_rom; }
     uint8_t getIOPort(uint8_t idx) const { return m_ioPorts[idx]; }
     uint8_t getIOPortMask(uint8_t idx) const { return m_ioPortsMasks[idx]; }

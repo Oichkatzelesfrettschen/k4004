@@ -35,14 +35,24 @@ protected:
     // Helper: Configure Busicom I/O port masks
     void configureBusicomIOMasks(ROM& rom) {
         // Based on Busicom 141-PF hardware specification:
-        // ROM0: All outputs (keyboard/printer shifter control)
-        // ROM1: All inputs (keyboard matrix rows)
-        // ROM2: Mixed I/O (printer drum sensor, paper button)
-        // ROM3-4: Unused (all outputs by default)
+        // Mask bit = 0: Output (CPU can write)
+        // Mask bit = 1: Input (external device drives the pin)
 
-        // Note: Our ROM class stores masks internally
-        // For now, masks default to 0x00 (all outputs) which is acceptable
-        // for basic testing. Full I/O simulation would require proper masks.
+        // ROM0: All outputs (keyboard/printer shifter control)
+        rom.setIOPortMask(0, 0b0000);
+
+        // ROM1: All inputs (keyboard matrix rows)
+        rom.setIOPortMask(1, 0b1111);
+
+        // ROM2: Mixed I/O (printer drum sensor, paper button)
+        // Bits 0,1,3 are inputs, bit 2 is output
+        rom.setIOPortMask(2, 0b1011);
+
+        // ROM3: All outputs (unused)
+        rom.setIOPortMask(3, 0b0000);
+
+        // ROM4: All outputs (unused, but contains sqrt algorithm)
+        rom.setIOPortMask(4, 0b0000);
     }
 
     ROM rom;
@@ -354,6 +364,87 @@ TEST_F(BusicomIntegrationTest, BusicomROM_NoInfiniteLoop_First10000) {
 }
 
 // =============================================================================
+// Level 7: I/O Mask Configuration Tests
+// =============================================================================
+
+TEST_F(BusicomIntegrationTest, BusicomIOMasks_Configuration) {
+    std::vector<uint8_t> binary = parseAsciiHexFile("../programs/busicom/busicom_141-PF.obj");
+    rom.load(binary.data(), binary.size());
+
+    // Configure Busicom-specific I/O masks
+    configureBusicomIOMasks(rom);
+
+    // Verify masks were set correctly
+    EXPECT_EQ(rom.getIOPortMask(0), 0b0000);  // ROM0: All outputs
+    EXPECT_EQ(rom.getIOPortMask(1), 0b1111);  // ROM1: All inputs
+    EXPECT_EQ(rom.getIOPortMask(2), 0b1011);  // ROM2: Mixed I/O
+    EXPECT_EQ(rom.getIOPortMask(3), 0b0000);  // ROM3: All outputs
+    EXPECT_EQ(rom.getIOPortMask(4), 0b0000);  // ROM4: All outputs
+}
+
+TEST_F(BusicomIntegrationTest, BusicomIOMasks_OutputBehavior) {
+    std::vector<uint8_t> binary = parseAsciiHexFile("../programs/busicom/busicom_141-PF.obj");
+    rom.load(binary.data(), binary.size());
+    configureBusicomIOMasks(rom);
+
+    // Test ROM0 (all outputs) - CPU should be able to write
+    rom.writeSrcAddress(0x00);  // Select ROM chip 0
+    rom.writeIOPort(0b1010);    // Write pattern
+    EXPECT_EQ(rom.readIOPort(), 0b1010);  // Should read back what was written
+
+    rom.writeIOPort(0b0101);    // Write different pattern
+    EXPECT_EQ(rom.readIOPort(), 0b0101);  // Should read back new value
+}
+
+TEST_F(BusicomIntegrationTest, BusicomIOMasks_InputBehavior) {
+    std::vector<uint8_t> binary = parseAsciiHexFile("../programs/busicom/busicom_141-PF.obj");
+    rom.load(binary.data(), binary.size());
+    configureBusicomIOMasks(rom);
+
+    // Test ROM1 (all inputs) - CPU writes should be ignored
+    rom.writeSrcAddress(0x10);  // Select ROM chip 1
+    rom.writeIOPort(0b1010);    // Try to write (should be ignored)
+    EXPECT_EQ(rom.readIOPort(), 0b0000);  // Should still be 0 (inputs preserve old value)
+
+    // Simulate external device (keyboard) setting input
+    rom.setExternalIOPort(1, 0b0110);
+    rom.writeSrcAddress(0x10);  // Re-select ROM chip 1
+    EXPECT_EQ(rom.readIOPort(), 0b0110);  // Should read external value
+
+    // CPU write should not affect inputs
+    rom.writeIOPort(0b1111);
+    EXPECT_EQ(rom.readIOPort(), 0b0110);  // Should still be external value
+}
+
+TEST_F(BusicomIntegrationTest, BusicomIOMasks_MixedIOBehavior) {
+    std::vector<uint8_t> binary = parseAsciiHexFile("../programs/busicom/busicom_141-PF.obj");
+    rom.load(binary.data(), binary.size());
+    configureBusicomIOMasks(rom);
+
+    // Test ROM2 (mixed I/O: bits 0,1,3 input, bit 2 output)
+    // Mask: 0b1011 (bit 2 is 0 = output, others are 1 = input)
+    rom.writeSrcAddress(0x20);  // Select ROM chip 2
+
+    // Set external inputs (bits 0,1,3)
+    rom.setExternalIOPort(2, 0b1011);  // External sets bits 0,1,3
+
+    // CPU writes pattern
+    rom.writeIOPort(0b0100);  // CPU tries to write bit 2 only
+
+    // Expected result:
+    // Bit 0: 1 (input from external)
+    // Bit 1: 1 (input from external)
+    // Bit 2: 1 (output from CPU)
+    // Bit 3: 1 (input from external)
+    EXPECT_EQ(rom.readIOPort(), 0b1111);  // Combination of external inputs + CPU output
+
+    // CPU writes different value to output bit
+    rom.writeIOPort(0b0000);  // CPU clears bit 2
+    // Expected: bits 0,1,3 still from external (0b1011), bit 2 from CPU (0)
+    EXPECT_EQ(rom.readIOPort(), 0b1011);
+}
+
+// =============================================================================
 // NOTE: Full calculator function tests (keyboard input, calculations, sqrt)
 // require peripheral simulation (keyboard, printer, etc.) which would be
 // implemented in future iterations.
@@ -364,6 +455,7 @@ TEST_F(BusicomIntegrationTest, BusicomROM_NoInfiniteLoop_First10000) {
 // ✅ Instruction correctness
 // ✅ No crashes or hangs
 // ✅ Performance characteristics
+// ✅ I/O port mask configuration (output/input/mixed)
 //
 // Future tests would add:
 // ⏭️ Keyboard input simulation
